@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快递单号穷举工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        #resultOutput {
+            min-height: 300px; /* 调高结果textarea的高度 */
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        .result textarea {
+            font-family: monospace;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>快递单号穷举工具</h1>
+        
+        <div class="input-group">
+            <label for="numberInput">请在下面输入快递单号：</label>
+            <textarea id="numberInput" placeholder="例如：12345678"></textarea>
+        </div>
+        
+        <div class="input-group">
+            <label for="columnsInput">请输入列数（用逗号分隔）：</label>
+            <input type="text" id="columnsInput" placeholder="例如：5,3,7">
+            <p style="color: #888; font-size: 12px;">提示：列数从左到右依次为1,2,3...</p>
+            <p style="color: #888; font-size: 12px;">逗号可以使用全角或半角</p>
+        </div>
+        
+        <button id="generateBtn">生成穷举结果</button>
+        
+        <div class="result">
+            <h3>穷举结果：</h3>
+            <textarea id="resultOutput"></textarea>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            const numberInput = document.getElementById('numberInput').value.trim();
+            const columnsInput = document.getElementById('columnsInput').value.trim();
+            
+            if (!numberInput) {
+                alert('请输入快递单号！');
+                return;
+            }
+            
+            if (!columnsInput) {
+                alert('请输入要穷举的列数！');
+                return;
+            }
+            
+            // 处理列数输入，支持全角和半角逗号
+            const columns = columnsInput.replace(/，/g, ',').split(',').map(num => parseInt(num.trim())).filter(num => !isNaN(num));
+            
+            if (columns.length === 0) {
+                alert('请输入有效的列数！');
+                return;
+            }
+            
+            // 检查列数是否在有效范围内
+            const validColumns = columns.filter(col => col > 0 && col <= numberInput.length);
+            
+            if (validColumns.length === 0) {
+                alert('输入的列数超出快递单号长度范围！');
+                return;
+            }
+            
+            // 执行穷举
+            const results = generateCombinations(numberInput, validColumns);
+            
+            // 显示结果
+            const resultOutput = document.getElementById('resultOutput');
+            resultOutput.value = results.join('\n');
+        });
+        
+        function generateCombinations(number, columns) {
+            // 转换为数组以便操作
+            const numberArray = number.split('');
+            
+            // 如果只有一个列要穷举
+            if (columns.length === 1) {
+                const col = columns[0] - 1; // 转换为0-based索引
+                const results = [];
+                
+                for (let i = 0; i <= 9; i++) {
+                    const temp = [...numberArray];
+                    temp[col] = i.toString();
+                    results.push(temp.join(''));
+                }
+                
+                return results;
+            }
+            
+            // 如果有多个列需要穷举
+            const permutations = [];
+            const temp = [...numberArray];
+            
+            function backtrack(start) {
+                if (start === columns.length) {
+                    permutations.push(temp.join(''));
+                    return;
+                }
+                
+                const col = columns[start] - 1; // 转换为0-based索引
+                
+                for (let i = 0; i <= 9; i++) {
+                    temp[col] = i.toString();
+                    backtrack(start + 1);
+                }
+            }
+            
+            backtrack(0);
+            
+            return permutations;
+        }
+    </script>
+</body>
+</html>
