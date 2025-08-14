@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双区文本处理工具</title>
+<style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+        font-family:Arial,Helvetica,sans-serif;
+        padding:20px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;   /* 水平居中 */
+    }
+    /* 左右两个 textarea 共用同一条“90% 宽”的容器，各自占 45% */
+    .dual-container{
+        width:90%;
+        max-width:900px;
+        display:flex;
+        gap:20px;
+    }
+    .pane{
+        flex:1 1 45%;
+        display:flex;
+        flex-direction:column;
+    }
+    .editor-wrapper{
+        position:relative;
+        height:90vh;          /* 高度占屏幕 90% */
+    }
+    .line-numbers{
+        position:absolute;
+        left:0;top:0;bottom:0;
+        width:40px;
+        background:#f5f5f5;
+        border:1px solid #ccc;
+        border-right:none;
+        text-align:right;
+        padding-right:5px;
+        color:#666;
+        font-size:14px;
+        line-height:1.5;
+        user-select:none;
+        overflow:hidden;
+    }
+    textarea{
+        width:100%;
+        height:100%;
+        padding:5px 5px 5px 45px;
+        resize:none;
+        font-size:16px;
+        line-height:1.5;
+        border:1px solid #ccc;
+    }
+    .btn-row{
+        display:flex;
+        gap:10px;
+        margin-top:10px;
+    }
+    button{
+        padding:8px 16px;
+        font-size:16px;
+        cursor:pointer;
+    }
+</style>
+</head>
+<body>
+
+<div class="dual-container">
+    <!-- 左侧 -->
+    <div class="pane">
+        <div class="editor-wrapper">
+            <div class="line-numbers" id="leftLineNumbers"></div>
+            <textarea id="leftText"  placeholder="左侧参考行"></textarea>
+        </div>
+        <button onclick="clearLeft()">清空左侧</button>
+    </div>
+
+    <!-- 右侧 -->
+    <div class="pane">
+        <div class="editor-wrapper">
+            <div class="line-numbers" id="rightLineNumbers"></div>
+            <textarea id="rightText" placeholder="右侧输入（完成后点按钮过滤）"></textarea>
+        </div>
+        <div class="btn-row">
+            <button onclick="filterRight()">过滤左侧已存在行</button>
+            <button onclick="processRight()">排序、去重并保留13位</button>
+            <button onclick="clearRight()">清空右侧</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const LS_LEFT  = 'dual_left';
+const LS_RIGHT = 'dual_right';
+const leftTa  = document.getElementById('leftText');
+const rightTa = document.getElementById('rightText');
+const leftNums  = document.getElementById('leftLineNumbers');
+const rightNums = document.getElementById('rightLineNumbers');
+
+/* 行号更新 */
+function updateLines(ta,nums){
+    const len = ta.value.split('\n').length;
+    nums.innerHTML = Array.from({length:len},(_,i)=>i+1).join('<br>');
+}
+[leftTa,rightTa].forEach(ta=>{
+    ta.addEventListener('input',()=>{
+        updateLines(ta,ta===leftTa?leftNums:rightNums);
+        saveAll();
+    });
+    ta.addEventListener('scroll',e=>{
+        (ta===leftTa?leftNums:rightNums).scrollTop = e.target.scrollTop;
+    });
+    ta.addEventListener('blur',()=>{ if(ta===rightTa) filterRight(); });
+});
+
+/* 过滤、排序、本地存储函数 */
+function filterRight(){
+    const leftSet=new Set(leftTa.value.split('\n').map(s=>s.trim()).filter(Boolean));
+    const lines=rightTa.value.split('\n')
+        .map(s=>s.trim()).filter(Boolean)
+        .filter(l=>!leftSet.has(l));
+    rightTa.value=lines.join('\n');
+    updateLines(rightTa,rightNums);
+    saveAll();
+}
+function processRight(){
+    filterRight();
+    const lines=rightTa.value.split('\n')
+        .map(s=>s.trim()).filter(Boolean)
+        .filter(s=>/^\d{13}$/.test(s))
+        .filter((v,i,a)=>a.indexOf(v)===i).sort();
+    rightTa.value=lines.join('\n');
+    updateLines(rightTa,rightNums);
+    saveAll();
+}
+function clearLeft(){ if(confirm('清空左侧？')){leftTa.value='';updateLines(leftTa,leftNums);saveAll();} }
+function clearRight(){if(confirm('清空右侧？')){rightTa.value='';updateLines(rightTa,rightNums);saveAll();}}
+function saveAll(){
+    localStorage.setItem(LS_LEFT,leftTa.value);
+    localStorage.setItem(LS_RIGHT,rightTa.value);
+}
+function loadAll(){
+    leftTa.value=localStorage.getItem(LS_LEFT)||'';
+    rightTa.value=localStorage.getItem(LS_RIGHT)||'';
+    updateLines(leftTa,leftNums);
+    updateLines(rightTa,rightNums);
+}
+loadAll();
+</script>
+
+</body>
+</html>
