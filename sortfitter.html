@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>文本去重与13位保留工具</title>
+<title>文本去重排序</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,Helvetica,sans-serif;padding:0px;display:flex;flex-direction:column;align-items:center}
@@ -53,7 +53,7 @@
 
 <div class="btn-row">
   <button onclick="clearText()">清空内容</button>
-  <button onclick="processText()">排序、去重并保留13位</button>
+  <button onclick="processText()">排序、去重</button>
 </div>
 
 <script>
@@ -80,7 +80,7 @@ function processText(){
     .split('\n')
     .map(s=>s.trim())
     .filter(Boolean)
-    .filter(s=>/^\d{13}$/.test(s))
+    .filter(s=>/^[a-zA-Z0-9]{2}\d{11}$/.test(s))
     .filter((v,i,a)=>a.indexOf(v)===i)
     .sort();
   ta.value = lines.join('\n');
