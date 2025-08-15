@@ -12,10 +12,11 @@
         return m ? decodeURIComponent(m[1]) : null;
     }
 
-    /* ---------- 写永不过期 Cookie ---------- */
-    function setPermanentCookie(name, value) {
-        const farFuture = new Date('2099-12-31T23:59:59Z');
-        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${farFuture.toUTCString()}; path=/`;
+    /* ---------- 写 7 天后失效的 Cookie ---------- */
+    function setWeekCookie(name, value) {
+        const weekLater = new Date();
+        weekLater.setTime(weekLater.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 天
+        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${weekLater.toUTCString()}; path=/`;
     }
 
     /* ---------- 阻塞等待 ---------- */
@@ -25,13 +26,13 @@
     }
 
     /* ---------- 主逻辑 ---------- */
-    if (getCookie(COOKIE_NAME) === 'true') return; // 已认证，直接放行
+    if (getCookie(COOKIE_NAME) === 'true') return; // 7 天内已认证，直接放行
 
     let wrongCount = 0;
     while (true) {
         const pwd = prompt('请输入访问密码：');
         if (pwd === PASSWORD) {
-            setPermanentCookie(COOKIE_NAME, 'true');
+            setWeekCookie(COOKIE_NAME, 'true');
             return;                        // 认证成功
         }
 
