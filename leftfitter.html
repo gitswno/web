@@ -85,7 +85,7 @@
         </div>
         <div class="btn-row">
             <button onclick="filterRight()">过滤左侧已存在行</button>
-            <button onclick="processRight()">排序、去重并保留13位</button>
+            <button onclick="processRight()">排序、去重</button>
             <button onclick="clearRight()">清空右侧</button>
         </div>
     </div>
@@ -126,13 +126,15 @@ function filterRight(){
     saveAll();
 }
 function processRight(){
-    filterRight();
-    const lines=rightTa.value.split('\n')
-        .map(s=>s.trim()).filter(Boolean)
-        .filter(s=>/^\d{13}$/.test(s))
-        .filter((v,i,a)=>a.indexOf(v)===i).sort();
-    rightTa.value=lines.join('\n');
-    updateLines(rightTa,rightNums);
+    const lines = rightTa.value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)                     // 去掉空行
+        .filter(s => /^[a-zA-Z0-9]{2}\d{11}$/.test(s)) // 格式校验
+        .filter((v, i, a) => a.indexOf(v) === i)       // 去重
+        .sort();                             // 排序
+    rightTa.value = lines.join('\n');
+    updateLines(rightTa, rightNums);
     saveAll();
 }
 function clearLeft(){ if(confirm('清空左侧？')){leftTa.value='';updateLines(leftTa,leftNums);saveAll();} }
