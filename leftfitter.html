@@ -74,10 +74,9 @@
             <textarea id="leftText"  placeholder="左侧参考行"></textarea>
         </div>
         <div class="btn-row">
-        <button onclick="clearLeft()">清空左侧</button>
-
+            <button onclick="clearLeft()">清空左侧</button>
             <button onclick="processLeft()">排序、去重</button>
-                    </div>
+        </div>
     </div>
 
     <!-- 右侧 -->
@@ -121,10 +120,11 @@ function updateLines(ta,nums){
 function processLeft(){
     const lines = leftTa.value
         .split('\n')
-        .map(s => s.trim())
-        .filter(Boolean)
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .sort();
+        .map(s => s.trim())                 // 去掉首尾空白
+        .filter(Boolean)                    // 去空行
+        .filter((v, i, a) => a.indexOf(v) === i) // 去重
+        .sort()                             // 排序
+        .filter(s => /^[a-zA-Z0-9]{2}\d{11}$/.test(s)); // 格式校验
     leftTa.value = lines.join('\n');
     updateLines(leftTa, leftNums);
     saveAll();
@@ -153,7 +153,8 @@ function processRight(){
         .map(s => s.trim())
         .filter(Boolean)
         .filter((v, i, a) => a.indexOf(v) === i)
-        .sort();
+        .sort()
+        .filter(s => /^[a-zA-Z0-9]{2}\d{11}$/.test(s));
     rightTa.value = lines.join('\n');
     updateLines(rightTa, rightNums);
     saveAll();
