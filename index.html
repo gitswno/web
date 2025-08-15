@@ -1,6 +1,54 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script>
+(function () {
+    const PASSWORD = '朱';          // 想改的密码
+    const COOKIE_NAME = 'myToolPass';
+
+    /* ---------- 读 Cookie ---------- */
+    function getCookie(name) {
+        const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    /* ---------- 写永不过期 Cookie ---------- */
+    function setPermanentCookie(name, value) {
+        const farFuture = new Date('2099-12-31T23:59:59Z');
+        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${farFuture.toUTCString()}; path=/`;
+    }
+
+    /* ---------- 阻塞等待 ---------- */
+    function sleep(ms) {
+        const start = Date.now();
+        while (Date.now() - start < ms) { /* 空转 */ }
+    }
+
+    /* ---------- 主逻辑 ---------- */
+    if (getCookie(COOKIE_NAME) === 'true') return; // 已认证，直接放行
+
+    let wrongCount = 0;
+    while (true) {
+        const pwd = prompt('请输入访问密码：');
+        if (pwd === PASSWORD) {
+            setPermanentCookie(COOKIE_NAME, 'true');
+            return;                        // 认证成功
+        }
+
+        wrongCount++;
+        if (wrongCount <= 3) {
+            alert(`密码错误！剩余 ${4 - wrongCount} 次机会。`);
+        } else {
+            const waitSec = 2 * (wrongCount - 3);
+            alert(`密码错误！请等待 ${waitSec} 秒后再试。`);
+            sleep(waitSec * 1000);
+        }
+    }
+})();
+</script>
+
+
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的小工具集合</title>
