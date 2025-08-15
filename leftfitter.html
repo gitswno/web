@@ -11,9 +11,8 @@
         padding:20px;
         display:flex;
         flex-direction:column;
-        align-items:center;   /* 水平居中 */
+        align-items:center;
     }
-    /* 左右两个 textarea 共用同一条“90% 宽”的容器，各自占 45% */
     .dual-container{
         width:90%;
         max-width:900px;
@@ -27,7 +26,7 @@
     }
     .editor-wrapper{
         position:relative;
-        height:90vh;          /* 高度占屏幕 90% */
+        height:90vh;
     }
     .line-numbers{
         position:absolute;
@@ -74,7 +73,11 @@
             <div class="line-numbers" id="leftLineNumbers"></div>
             <textarea id="leftText"  placeholder="左侧参考行"></textarea>
         </div>
+        <div class="btn-row">
         <button onclick="clearLeft()">清空左侧</button>
+
+            <button onclick="processLeft()">排序、去重</button>
+                    </div>
     </div>
 
     <!-- 右侧 -->
@@ -112,10 +115,29 @@ function updateLines(ta,nums){
     ta.addEventListener('scroll',e=>{
         (ta===leftTa?leftNums:rightNums).scrollTop = e.target.scrollTop;
     });
-    ta.addEventListener('blur',()=>{ if(ta===rightTa) filterRight(); });
 });
 
-/* 过滤、排序、本地存储函数 */
+/* ---------- 左侧相关 ---------- */
+function processLeft(){
+    const lines = leftTa.value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .sort();
+    leftTa.value = lines.join('\n');
+    updateLines(leftTa, leftNums);
+    saveAll();
+}
+function clearLeft(){
+    if(confirm('清空左侧？')){
+        leftTa.value='';
+        updateLines(leftTa,leftNums);
+        saveAll();
+    }
+}
+
+/* ---------- 右侧相关 ---------- */
 function filterRight(){
     const leftSet=new Set(leftTa.value.split('\n').map(s=>s.trim()).filter(Boolean));
     const lines=rightTa.value.split('\n')
@@ -129,16 +151,20 @@ function processRight(){
     const lines = rightTa.value
         .split('\n')
         .map(s => s.trim())
-        .filter(Boolean)                     // 去掉空行
-        .filter(s => /^[a-zA-Z0-9]{2}\d{11}$/.test(s)) // 格式校验
-        .filter((v, i, a) => a.indexOf(v) === i)       // 去重
-        .sort();                             // 排序
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .sort();
     rightTa.value = lines.join('\n');
     updateLines(rightTa, rightNums);
     saveAll();
 }
-function clearLeft(){ if(confirm('清空左侧？')){leftTa.value='';updateLines(leftTa,leftNums);saveAll();} }
-function clearRight(){if(confirm('清空右侧？')){rightTa.value='';updateLines(rightTa,rightNums);saveAll();}}
+function clearRight(){
+    if(confirm('清空右侧？')){
+        rightTa.value='';
+        updateLines(rightTa,rightNums);
+        saveAll();
+    }
+}
 function saveAll(){
     localStorage.setItem(LS_LEFT,leftTa.value);
     localStorage.setItem(LS_RIGHT,rightTa.value);
