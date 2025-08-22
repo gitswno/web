@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
 <script>
 (function () {
-  const PASSWORD = 'z';      // 想改的密码
+  const PASSWORD = 'z';        // 想改的密码
   const COOKIE_NAME = 'myToolPass';
 
   /* ---------- 读 Cookie ---------- */
@@ -12,11 +9,11 @@
     return m ? decodeURIComponent(m[1]) : null;
   }
 
-  /* ---------- 写 7 天后失效的 Cookie ---------- */
-  function setWeekCookie(name, value) {
-    const weekLater = new Date();
-    weekLater.setTime(weekLater.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 天
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${weekLater.toUTCString()}; path=/`;
+  /* ---------- 写 4 小时后失效的 Cookie ---------- */
+  function setFourHourCookie(name, value) {
+    const fourHourLater = new Date();
+    fourHourLater.setTime(fourHourLater.getTime() + 4 * 60 * 60 * 1000); // 4 小时
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${fourHourLater.toUTCString()}; path=/`;
   }
 
   /* ---------- 阻塞等待 ---------- */
@@ -26,13 +23,13 @@
   }
 
   /* ---------- 主逻辑 ---------- */
-  if (getCookie(COOKIE_NAME) === 'true') return; // 7 天内已认证，直接放行
+  if (getCookie(COOKIE_NAME) === 'true') return; // 4 小时内已认证，直接放行
 
   let wrongCount = 0;
   while (true) {
     const pwd = prompt('请输入访问密码：');
     if (pwd === PASSWORD) {
-      setWeekCookie(COOKIE_NAME, 'true');
+      setFourHourCookie(COOKIE_NAME, 'true');
       return;            // 认证成功
     }
 
@@ -47,66 +44,3 @@
   }
 })();
 </script>
-
-
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>扫码 & 去重</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    h1 {
-      color: #333;
-    }
-    .tool-list {
-      list-style-type: none;
-      padding: 0;
-    }
-    .tool-list li {
-      background-color: #fff;
-      margin-bottom: 10px;
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s ease;
-    }
-    .tool-list li:hover {
-      transform: translateY(-3px);
-    }
-    .tool-list a {
-      text-decoration: none;
-      color: #007BFF;
-      font-weight: bold;
-      display: block;
-    }
-    .tool-list a:hover {
-      color: #0056b3;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1></h1>
-  </header>
-  <ul class="tool-list">
-    <li>
-      <a href="https://notelive.cc/mobile/#pzc" target="_blank">扫码</a>
-    </li>
-   
-<li>
-<a href="https://gitswno.github.io/web/sortfitter.html" target="_blank">去重</a>
-</li>
-  </ul>
-</body>
-</html>
- 
