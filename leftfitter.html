@@ -147,7 +147,16 @@ function filterRight(){
     updateLines(rightTa,rightNums);
     saveAll();
 }
+/* ---------- 右侧相关 ---------- */
 function processRight(){
+    const now = new Date();                 // 当前时间
+    const hour = now.getHours();            // 0-23
+    // 前半天用前一天，后半天用当天
+    const targetDate = new Date(now);
+    if(hour < 12) targetDate.setDate(targetDate.getDate() - 1);
+
+    const dateStr = targetDate.toISOString().slice(0,10); // yyyy-mm-dd
+
     const lines = rightTa.value
         .split('\n')
         .map(s => s.trim())
@@ -155,10 +164,15 @@ function processRight(){
         .filter((v, i, a) => a.indexOf(v) === i)
         .sort()
         .filter(s => /^[a-zA-Z0-9]{2}\d{11}$/.test(s));
+
+    // 把日期追加到最下面
+    lines.push(dateStr);
+
     rightTa.value = lines.join('\n');
     updateLines(rightTa, rightNums);
     saveAll();
 }
+
 function clearRight(){
     if(confirm('清空右侧？')){
         rightTa.value='';
