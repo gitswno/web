@@ -1,0 +1,33 @@
+<a target="_blank" href="https://github.com/MetaCubeX/ClashMetaForAndroid/releases">clash meta for andrpid - github</a>
+<br />
+<br />
+<a target="_blank" href="https://github.com/2dust/v2rayNG/releases">v2rayng - github</a>
+<br />
+<br />
+<a target="_blank" href="https://geph.io/zhs">迷雾通 - 官网</a>
+<br />
+<br />
+<a target="_blank" href="https://github.com/KaringX/karing/releases">karing</a>
+<a target="_blank" href="https://github.com/getsurfboard/surfboard/releases">surfboard - github</a>
+<br />
+<br />
+<a target="_blank" href="https://github.com/chen08209/FlClash/releases">fclash - github</a>
+
+<!-- 一键打开所有链接（自动读取页面上全部 <a>） -->
+<button id="openAllBtn" style="position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 16px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">一键打开所有链接</button>
+
+<script>
+(function(){
+    // 收集当前页面里所有 <a> 的 href
+    function collectLinks(){
+        return Array.from(document.querySelectorAll('a[href]'))
+                    .map(a => a.href)
+                    .filter(h => h);          // 去掉空值
+    }
+
+    document.getElementById('openAllBtn').addEventListener('click', function(){
+        const urls = collectLinks();
+        urls.forEach(u => window.open(u, '_blank'));
+    });
+})();
+</script>
