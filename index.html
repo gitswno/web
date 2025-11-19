@@ -3,7 +3,7 @@
 <head>
 <script>
 (function () {
-    const PASSWORD = '朱';          // 想改的密码
+    const PASSWORD = 'vu';          // 想改的密码
     const COOKIE_NAME = 'myToolPass';
 
     /* ---------- 读 Cookie ---------- */
@@ -30,7 +30,7 @@
 
     let wrongCount = 0;
     while (true) {
-        const pwd = prompt('请输入访问密码：');
+        const pwd = prompt('Last Name');
         if (pwd === PASSWORD) {
             setWeekCookie(COOKIE_NAME, 'true');
             return;                        // 认证成功
@@ -123,4 +123,3 @@
     </ul>
 </body>
 </html>
- 
