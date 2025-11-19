@@ -12,10 +12,10 @@
         return m ? decodeURIComponent(m[1]) : null;
     }
 
-    /* ---------- 写 7 天后失效的 Cookie ---------- */
+    /* ---------- 写 3 天后失效的 Cookie ---------- */
     function setWeekCookie(name, value) {
         const weekLater = new Date();
-        weekLater.setTime(weekLater.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 天
+        weekLater.setTime(weekLater.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 天
         document.cookie = `${name}=${encodeURIComponent(value)}; expires=${weekLater.toUTCString()}; path=/`;
     }
 
