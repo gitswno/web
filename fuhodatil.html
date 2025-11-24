@@ -38,8 +38,6 @@ const pick=arr=>arr[rand(0,arr.length-1)];
 
 function makeRow(type,isZeroNine, rows){
   let p,b,r;
-
-  /* ========= 九宫特殊处理（原逻辑不动） ========= */
   if(type==='九宫'){
     if(isZeroNine){
       r=0; p=rand(1,3); b=rand(12,25);
@@ -51,205 +49,86 @@ function makeRow(type,isZeroNine, rows){
       r=Math.round(p*ratioRP);
       if(p<=b) p=b+4; if(r>p) r=p;
     }
-    /* ========= 强制 |复活数-包装数|≤5 ========= */
     r = Math.max(0, Math.min(r, p + 5));
     r = Math.max(r, p - 5);
     return {package:p,inner:b,revival:r};
   }
-
-  /* ========= 其它环节：先按原比例算初值 ========= */
   if(type==='AB环')        r=rand(10,30);
   else if(type==='地分线') r=rand(9,13);
   else                     r=rand(4,12);
-
   const ratioRP=rand(79,92)/100;
   const ratioPI=rand(85,88)/100;
   p=Math.round(r/ratioRP);
   b=Math.round(p/ratioPI);
-
-  /* ========= 新增：第一行 AB 环 |复活数-包装数|≤6 ========= */
-  if (type === 'AB环' && rows.length === 0) {
-    const delta = rand(0,6);
-    if (Math.random() < 0.5) {
-      p = r + delta;
-    } else {
-      p = Math.max(1, r - delta);
-    }
+  if(b<=r) b=r+4; if(p<=b) p=b+4;
+  if(Math.random()<0.7){ b=p+rand(4,11); }else{ p=b+rand(3,5); }
+  if(Math.abs(r-p)>5){
+    const delta=rand(0,5);
+    if(Math.random()<0.5) p=r+delta; else p=Math.max(1,r-delta);
   }
-  /* ============================================ */
-
-  /* ========= 重写版：先保底，再 70/30 ========= */
-  // 1. 先按 revival 把 inner 算出来，保证 inner ≥ revival + 4
-  if (type === '九宫') {
-    // 九宫独立逻辑，保持原样
-    if (isZeroNine) {
-      r = 0;
-      p = rand(1, 3);
-      b = rand(12, 25);
-    } else {
-      const ratioRP = rand(79, 92) / 100;
-      b = rand(20, 40);
-      const ratioPI = rand(85, 88) / 100;
-      p = Math.round(b / ratioPI);
-      r = Math.round(p * ratioRP);
-      if (p <= b) p = b + 4;
-      if (r > p) r = p;
-    }
-    return { package: p, inner: b, revival: r };
-  }
-
-  // 2. 其它环节：先给 revival 赋初值
-  if (type === 'AB环') r = rand(10, 30);
-  else if (type === '地分线') r = rand(9, 13);
-  else r = rand(4, 12);
-
-  // 3. 保底①：inner 必须 ≥ revival + 4
-  b = r + rand(4, 11);
-
-  // 4. 保底②：package 必须 ≥ inner + 4
-  p = b + rand(3, 5);
-
-  // 5. 70 % / 30 % 业务偏好：真正决定谁多
-  const dir = Math.random();
-  if (dir < 0.7) {
-    // 70 % 想看到“内件多”——把 inner 再拉大
-    b = p + rand(4, 11);
-  } else {
-    // 30 % 继续“包装多”——把 package 再拉大
-    p = b + rand(3, 5);
-  }
-
-  /* ========= 新增：强制 |复活数-包装数| ≤ 5 ========= */
-  if (Math.abs(r - p) > 5) {
-    const delta = rand(0, 5);
-    if (Math.random() < 0.5) {
-      p = r + delta;
-    } else {
-      p = r - delta;
-    }
-    if (p < 1) p = 1;
-  }
-  /* ============================================ */
-
-  // 6. 返回这一行数据
-  return { package: p, inner: b, revival: r };
+  return {package:p,inner:b,revival:r};
 }
 
-/* ========== 新版 buildRows：AB环出现3到5次，其它地方不要动 ========== */
 function buildRows(){
   const pool=['地分线','卸车口','九宫'], names=[], rows=[];
-
-  /* 1. 首行固定 AB 环 */
   names.push('AB环'); rows.push({type:'AB环',...makeRow('AB环',false, rows)});
-
-  /* 2. 第二行 70% 九宫，30% 随机其它 */
   const secondIsNine = Math.random() < 0.7;
   const secondType   = secondIsNine ? '九宫' : pool.filter(t=>t!=='九宫')[rand(0,1)];
-  names.push(secondType);
-  rows.push({type:secondType,...makeRow(secondType, secondType==='九宫' && secondIsNine, rows)});
-
-  /* 3. 强制再补一次“零九宫” */
-  if(!names.includes('九宫')){
-    names.push('九宫');
-    rows.push({type:'九宫',...makeRow('九宫',true, rows)});
-  }
-
-  /* 4. 强制补齐缺失环节 */
-  ['地分线','卸车口'].forEach(t=>{
-    if(!names.includes(t)){ names.push(t); rows.push({type:t,...makeRow(t,false, rows)}); }
-  });
-
-  /* 5. 原有随机逻辑继续（防三连、第二个 AB 环等） */
+  names.push(secondType); rows.push({type:secondType,...makeRow(secondType, secondType==='九宫' && secondIsNine, rows)});
+  if(!names.includes('九宫')){ names.push('九宫'); rows.push({type:'九宫',...makeRow('九宫',true, rows)}); }
+  ['地分线','卸车口'].forEach(t=>{ if(!names.includes(t)){ names.push(t); rows.push({type:t,...makeRow(t,false, rows)}); } });
   while(rows.length<rand(4,6)){
     let t=pick(pool);
-    if(names.length>=2 && names[names.length-1]===t && names[names.length-2]===t){
-      t=pool.find(x=>x!==t);
-    }
+    if(names.length>=2 && names[names.length-1]===t && names[names.length-2]===t){ t=pool.find(x=>x!==t); }
     names.push(t); rows.push({type:t,...makeRow(t,false, rows)});
   }
-
   if(names.length>=2 && names[names.length-1]==='AB环' && names[names.length-2]==='AB环'){
     names.push('地分线'); rows.push({type:'地分线',...makeRow('地分线',false, rows)});
   }
   names.push('AB环'); rows.push({type:'AB环',...makeRow('AB环',false, rows)});
-
   while(rows.length<rand(11,14)){
     let t=pick(pool);
-    if(names.length>=2 && names[names.length-1]===t && names[names.length-2]===t){
-      t=pool.find(x=>x!==t);
-    }
+    if(names.length>=2 && names[names.length-1]===t && names[names.length-2]===t){ t=pool.find(x=>x!==t); }
     names.push(t); rows.push({type:t,...makeRow(t,false, rows)});
   }
-
-  /* ===== 新增：确保 AB 环出现 3 到 5 次 ===== */
   const abCountNow = names.filter(n => n==='AB环').length;
   if(abCountNow < 3){
     for(let i=0; i < 3 - abCountNow; i++){
-      names.splice(-1, 0, 'AB环');
-      rows.splice(-1, 0, {type:'AB环', ...makeRow('AB环', false, rows)});
+      names.splice(-1, 0, 'AB环'); rows.splice(-1, 0, {type:'AB环', ...makeRow('AB环', false, rows)});
     }
   } else if(abCountNow > 5){
     let del = abCountNow - 5;
-    for(let i = names.length - 2; i > 0 && del > 0; i--){
-      if(names[i]==='AB环'){
-        names.splice(i, 1);
-        rows.splice(i, 1);
-        del--;
-      }
+    for(let i = names.length - 2; i > 0 && del > 0; i--){ if(names[i]==='AB环'){ names.splice(i, 1); rows.splice(i, 1); del--; } }
+  }
+  (function balanceAB(){
+    const abRows = rows.filter(r => r.type === 'AB环'); if(abRows.length === 0) return;
+    const totalRev = rows.reduce((s, r) => s + r.revival, 0);
+    const targetAB = Math.round(totalRev * 0.5);
+    let currAB = abRows.reduce((s, r) => s + r.revival, 0);
+    if(currAB === targetAB) return;
+    const ratio = targetAB / currAB;
+    abRows.forEach(r => { r.revival = Math.round(r.revival * ratio); });
+    const newAB = abRows.reduce((s, r) => s + r.revival, 0);
+    let diff = targetAB - newAB;
+    while(diff !== 0){
+      const r = abRows[Math.floor(Math.random() * abRows.length)];
+      if(diff > 0){ r.revival++; diff--; } else if(r.revival > 0){ r.revival--; diff++; }
     }
-  }
-  /* ============================================ */
-
-  /* ===== 让 AB 环复活数之和 ≈ 总复活数 50% ===== */
-(function balanceAB(){
-  const abRows = rows.filter(r => r.type === 'AB环');
-  if(abRows.length === 0) return;
-
-  const totalRev = rows.reduce((s, r) => s + r.revival, 0);
-  const targetAB = Math.round(totalRev * 0.5);
-
-  let currAB = abRows.reduce((s, r) => s + r.revival, 0);
-  if(currAB === targetAB) return;
-
-  const ratio = targetAB / currAB;
-  abRows.forEach(r => { r.revival = Math.round(r.revival * ratio); });
-
-  const newAB = abRows.reduce((s, r) => s + r.revival, 0);
-  let diff = targetAB - newAB;
-  while(diff !== 0){
-    const r = abRows[Math.floor(Math.random() * abRows.length)];
-    if(diff > 0){ r.revival++; diff--; }
-    else if(r.revival > 0){ r.revival--; diff++; }
-  }
-})();
-/* ============================================ */
-
-/* ========= 最终修正：第一行 AB 环 |复活数-包装数|≤6 ========= */
-(function fixFirstAB() {
-  const first = rows[0];
-  if (!first || first.type !== 'AB环') return;
-  const { revival: r } = first;
-  let { package: p } = first;
-  if (Math.abs(r - p) > 6) {
-    const delta = rand(0, 6);
-    if (Math.random() < 0.5) p = r + delta;
-    else p = Math.max(1, r - delta);
-    first.package = p;
-  }
-})();
-/* ============================================ */
-
-/* ========== 新增：强制 AB 环出现 4–6 次 ========== */
-(function ensureABcount(){
-  const abNow = rows.filter(r => r.type === 'AB环').length;
-  const need  = rand(4,6) - abNow;
-  for(let i=0; i<need; i++){
-    names.push('AB环');
-    rows.push({type:'AB环', ...makeRow('AB环',false, rows)});
-  }
-})();
-/* ============================================ */
-
+  })();
+  (function fixFirstAB() {
+    const first = rows[0]; if (!first || first.type !== 'AB环') return;
+    const { revival: r } = first; let { package: p } = first;
+    if (Math.abs(r - p) > 6) {
+      const delta = rand(0, 6);
+      if (Math.random() < 0.5) p = r + delta; else p = Math.max(1, r - delta);
+      first.package = p;
+    }
+  })();
+  (function ensureABcount(){
+    const abNow = rows.filter(r => r.type === 'AB环').length;
+    const need  = rand(4,6) - abNow;
+    for(let i=0; i<need; i++){ names.push('AB环'); rows.push({type:'AB环', ...makeRow('AB环',false, rows)}); }
+  })();
   return rows;
 }
 
@@ -257,42 +136,51 @@ let lock=false;
 function updateSum(){
   if(lock)return; lock=true;
   let s=0;
-  document.querySelectorAll('#tb tr').forEach(tr=>
-    s+=parseInt(tr.cells[3].textContent)||0);
+  document.querySelectorAll('#tb tr').forEach(tr=> s+=parseInt(tr.cells[3].textContent)||0);
   document.getElementById('tr').textContent=s;
   lock=false;
 }
+
+/* ========== 方案 B 全新 reverseAll：按预算重分配复活数 ========== */
 function reverseAll(targetRev){
   if(lock)return; lock=true;
   const rows=[...document.querySelectorAll('#tb tr')];
-  let cur=0;
-  const data=rows.map(tr=>{
-    const type=tr.cells[0].textContent, p=parseInt(tr.cells[1].textContent)||0,
-          b=parseInt(tr.cells[2].textContent)||0, r=parseInt(tr.cells[3].textContent)||0;
-    cur+=r; return {tr,type,p,b,r};
+  const data=rows.map(tr=>({
+    tr,
+    type:tr.cells[0].textContent,
+    p:parseInt(tr.cells[1].textContent)||0,
+    b:parseInt(tr.cells[2].textContent)||0,
+    r:parseInt(tr.cells[3].textContent)||0
+  }));
+  const zeroTr=data.find(o=>o.type==='九宫'&&o.r===0)?.tr||null;
+
+  /* 1. 预算拆分 */
+  const abRows=data.filter(o=>o.type==='AB环');
+  const abTarget=Math.round(targetRev*0.5);
+  const otherTarget=targetRev-abTarget;
+
+  /* 2. AB 环分配 */
+  let abLeft=abTarget;
+  abRows.forEach((o,idx)=>{
+    if(o.tr===zeroTr)return;
+    let base=Math.floor(abTarget/Math.max(1,abRows.length));
+    if(idx===abRows.length-1)base=abLeft;
+    o.r=Math.max(0,base); abLeft-=o.r;
   });
-  if(cur===0){lock=false;return;}
-  const ratio=targetRev/cur;
-  let zeroTr=null; data.forEach(o=>{if(o.type==='九宫'&&o.r===0)zeroTr=o.tr;});
-  data.forEach(o=>{
-    let r=Math.round(o.r*ratio), p,b;
-    if(o.tr===zeroTr){ r=0; p=rand(1,3); b=rand(12,25); }
-    else if(o.type==='九宫'){
-      const ratioPI=rand(85,88)/100;
-      const ratioRP=rand(79,92)/100;
-      b=rand(20,40); p=Math.round(b/ratioPI); r=Math.round(p*ratioRP);
-      if(p<=b)p=b+4; if(r>p)r=p;
-    }else{
-      const ratioRP=rand(79,92)/100;
-      const ratioPI=rand(85,88)/100;
-      p=Math.round(r/ratioRP); b=Math.round(p/ratioPI);
-      if(b<=r)b=r+4; if(p<=b)p=b+4;
-    }
-    o.tr.cells[1].textContent=p; o.tr.cells[2].textContent=b; o.tr.cells[3].textContent=r;
+
+  /* 3. 非 AB 环分配 */
+  const otherRows=data.filter(o=>o.type!=='AB环');
+  let otherLeft=otherTarget;
+  otherRows.forEach((o,idx)=>{
+    if(o.tr===zeroTr){o.r=0;return;}
+    let base=Math.floor(otherTarget/Math.max(1,otherRows.length));
+    if(idx===otherRows.length-1)base=otherLeft;
+    o.r=Math.max(0,base); otherLeft-=o.r;
   });
-  let now=Array.from(rows).reduce((s,tr)=>s+(parseInt(tr.cells[3].textContent)||0),0);
-  let diff=targetRev-now;
-  for(let o of data){if(o.tr===zeroTr)continue; if(diff>0){o.tr.cells[3].textContent=parseInt(o.tr.cells[3].textContent)+1;diff--;}else if(diff<0&&parseInt(o.tr.cells[3].textContent)>0){o.tr.cells[3].textContent=parseInt(o.tr.cells[3].textContent)-1;diff++;}if(diff===0)break;}
+
+  /* 4. 写回 */
+  data.forEach(o=>o.tr.cells[3].textContent=o.r);
+  updateSum();
   lock=false;
 }
 
@@ -300,15 +188,12 @@ let inited=false;
 function initEvents(){
   if(inited)return; inited=true;
   document.getElementById('tb').addEventListener('input',e=>{
-    const td=e.target;
-    if(td.tagName!=='TD')return;
-    const v=parseInt(td.textContent)||0;
-    if(v<0)td.textContent=0;
+    const td=e.target; if(td.tagName!=='TD')return;
+    const v=parseInt(td.textContent)||0; if(v<0)td.textContent=0;
     updateSum();
   });
   document.getElementById('tr').addEventListener('blur',e=>{
-    const v=parseInt(e.target.textContent)||0;
-    if(v<0){e.target.textContent=0;return;}
+    const v=parseInt(e.target.textContent)||0; if(v<0){e.target.textContent=0;return;}
     reverseAll(v);
   });
 }
@@ -319,11 +204,7 @@ function render(){
   tb.innerHTML='';
   rows.forEach(o=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td>${o.type}</td>
-      <td contenteditable="true">${o.package}</td>
-      <td contenteditable="true">${o.inner}</td>
-      <td contenteditable="true">${o.revival}</td>`;
+    tr.innerHTML=`<td>${o.type}</td><td contenteditable="true">${o.package}</td><td contenteditable="true">${o.inner}</td><td contenteditable="true">${o.revival}</td>`;
     tb.appendChild(tr);
   });
   updateSum();
@@ -331,8 +212,7 @@ function render(){
 
 function setTitle(){
   const d=new Date();
-  document.getElementById('title').textContent=
-    `${d.getMonth()+1}-${d.getDate()}复活件`;
+  document.getElementById('title').textContent=`${d.getMonth()+1}-${d.getDate()}复活件`;
 }
 setTitle();
 initEvents();
