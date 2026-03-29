@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可编辑并自动存储的页面</title>
+    <style>
+        /* 基本样式 */
+        body {
+            margin: 0;
+            padding: 200px; /* 增加了边距 */
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        #editableContainer {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        
+        #editableDiv {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            min-height: 200px;
+            box-sizing: border-box;
+            outline: none;
+            flex: 1;
+            overflow-y: auto;
+            line-height: 1.5;
+            background-color: white;
+            transition: border-color 0.3s;
+            position: relative;
+        }
+        
+        #editableDiv:focus {
+            border-color: #4a90e2;
+            box-shadow: 0 0 8px rgba(74, 144, 226, 0.3);
+        }
+        
+        /* 占位符样式 */
+        #editableDiv.empty {
+            color: #999;
+        }
+        
+        #editableDiv.empty::before {
+            content: '在这里编辑您的内容...';
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            pointer-events: none;
+        }
+        
+        /* 控制面板样式 */
+        #controlPanel {
+            padding: 10px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9f9f9;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3a7bc8;
+        }
+        
+        #status {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        #status.saving {
+            color: #ff9800;
+        }
+        
+        #status.saved {
+            color: #4caf50;
+        }
+        
+        #status.error {
+            color: #f44336;
+        }
+        
+        /* 针对小屏幕设备的调整 */
+        @media (max-width: 768px) {
+            body {
+                padding: 30px; /* 在小屏幕上减少边距 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="editableContainer">
+        <div id="editableDiv" contenteditable="true"></div>
+    </div>
+    <div id="controlPanel">
+        <button id="clearButton">清空内容</button>
+        <span id="status">已自动保存</span>
+        <button id="saveButton">手动保存</button>
+    </div>
+
+    <script>
+        // DOM元素
+        const editableDiv = document.getElementById('editableDiv');
+        const clearButton = document.getElementById('clearButton');
+        const saveButton = document.getElementById('saveButton');
+        const statusElement = document.getElementById('status');
+        let saveTimeout;
+        let contentChanged = false;
+
+        // 初始化编辑器
+        function initEditor() {
+            if (!isLocalStorageAvailable()) {
+                statusElement.textContent = '本地存储不可用，内容不会被保存';
+                return;
+            }
+
+            updateEmptyState();
+            loadSavedContent();
+
+            editableDiv.addEventListener('focus', onFocus);
+            editableDiv.addEventListener('blur', onBlur);
+            editableDiv.addEventListener('input', onInput);
+            clearButton.addEventListener('click', clearContent);
+            saveButton.addEventListener('click', saveContentImmediately);
+            window.addEventListener('beforeunload', onBeforeUnload);
+        }
+
+        // 检查localStorage是否可用
+        function isLocalStorageAvailable() {
+            try {
+                const testKey = '__local_storage_test__';
+                localStorage.setItem(testKey, '1');
+                localStorage.removeItem(testKey);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // 加载保存的内容
+        function loadSavedContent() {
+            const savedContent = localStorage.getItem('editableContent');
+            if (savedContent) {
+                try {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(savedContent, 'text/html');
+                    if (doc.body && doc.body.innerHTML) {
+                        editableDiv.innerHTML = sanitizeHTML(doc.body.innerHTML);
+                        updateEmptyState();
+                    }
+                } catch (error) {
+                    console.error('内容恢复失败:', error);
+                    statusElement.textContent = '内容恢复失败';
+                }
+            }
+        }
+
+        // 清理HTML以防止XSS
+        function sanitizeHTML(html) {
+            const div = document.createElement('div');
+            div.innerHTML = html;
+            // 移除不安全的属性和标签
+            return div.innerHTML;
+        }
+
+        // 聚焦处理
+        function onFocus() {
+            editableDiv.classList.remove('empty');
+            statusElement.textContent = '正在编辑...';
+        }
+
+        // 失去焦点处理
+        function onBlur() {
+            updateEmptyState();
+            saveContent();
+        }
+
+        // 更新空状态
+        function updateEmptyState() {
+            const isEmpty = isContentEmpty();
+            editableDiv.classList.toggle('empty', isEmpty);
+        }
+
+        // 检查内容是否为空
+        function isContentEmpty() {
+            const textContent = editableDiv.textContent.trim();
+            const hasVisibleContent = textContent.length > 0;
+            const hasNonEmptyElements = Array.from(editableDiv.querySelectorAll('*'))
+                .some(el => el.tagName.toLowerCase() !== 'br' || el.textContent.trim().length > 0);
+            return !(hasVisibleContent || hasNonEmptyElements);
+        }
+
+        // 输入处理
+        function onInput() {
+            updateEmptyState();
+            clearTimeout(saveTimeout);
+            contentChanged = true;
+            saveTimeout = setTimeout(() => {
+                saveContent();
+            }, 500);
+        }
+
+        // 保存内容到本地存储
+        function saveContent() {
+            try {
+                if (isContentEmpty()) {
+                    localStorage.removeItem('editableContent');
+                } else {
+                    const content = editableDiv.innerHTML;
+                    localStorage.setItem('editableContent', content);
+                }
+                statusElement.textContent = '已自动保存';
+                statusElement.className = 'saved';
+                contentChanged = false;
+            } catch (error) {
+                console.error('保存内容失败:', error);
+                statusElement.textContent = '保存失败';
+                statusElement.className = 'error';
+            }
+        }
+
+        // 立即保存内容
+        function saveContentImmediately() {
+            saveContent();
+            statusElement.textContent = '已手动保存';
+        }
+
+        // 清空内容
+        function clearContent() {
+            if (confirm('确定要清空所有内容吗？此操作不可撤销。')) {
+                editableDiv.innerHTML = '';
+                updateEmptyState();
+                localStorage.removeItem('editableContent');
+                statusElement.textContent = '内容已清空';
+                statusElement.className = '';
+                contentChanged = false;
+            }
+        }
+
+        // 页面卸载前保存
+        function onBeforeUnload(event) {
+            if (contentChanged) {
+                saveContent();
+            }
+        }
+
+        // 初始化编辑器
+        window.onload = initEditor;
+    </script>
+</body>
+</html>

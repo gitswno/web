@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>复活件明细</title>
+<style>
+body{margin:0;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;padding:8px;background:#f2f2f2;}
+h3{margin:0 0 8px;text-align:center;font-size:25px;}
+table{width:100%;border-collapse:collapse;background:#fff;table-layout:fixed;}
+td,th{border:1px solid #ccc;padding:6px 4px;text-align:center;word-break:break-all;font-size:13px;}
+th{background:#f5f5f5;font-size:12px;}
+.total-row{background:#fafafa;font-weight:bold;}
+[contenteditable]{min-height:22px;outline:none;-webkit-tap-highlight-color:transparent;}
+[contenteditable]:focus{background:#fff7e6;}
+.scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+</style>
+</head>
+<body>
+<h3 id="title"></h3>
+<div class="scroll-wrap">
+<table id="tbl">
+<thead><tr><th style="width:70px">环节</th><th>包装数</th><th>内件数</th><th>复活数</th></tr></thead>
+<tbody id="tb"></tbody>
+<tfoot><tr class="total-row">
+<td>合计</td>
+<td contenteditable="true" id="tp"></td>
+<td contenteditable="true" id="ti"></td>
+<td contenteditable="true" id="tr">0</td>
+</tr></tfoot>
+</table>
+</div>
+
+<script>
+(function(){
+const rand=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+const pick=arr=>arr[rand(0,arr.length-1)];
+
+function makeRow(type,isZeroNine, rows){
+  let p,b,r;
+  if(type==='九宫'){
+    if(isZeroNine){
+      r=0; p=rand(1,3); b=rand(12,25);
+    }else{
+      const ratioRP=rand(79,92)/100;
+      b=rand(20,40);
+      const ratioPI=rand(85,88)/100;
+      p=Math.round(b/ratioPI);
+      r=Math.round(p*ratioRP);
+      if(p<=b) p=b+4; if(r>p) r=p;
+    }
+    r = Math.max(0, Math.min(r, p + 5));
+    r = Math.max(r, p - 5);
+    return {package:p,inner:b,revival:r};
+  }
+  if(type==='AB环')        r=rand(10,30);
+  else if(type==='地分线') r=rand(9,13);
+  else                     r=rand(4,12);
+  const ratioRP=rand(79,92)/100;
+  const ratioPI=rand(85,88)/100;
+  p=Math.round(r/ratioRP);
+  b=Math.round(p/ratioPI);
+  if(b<=r) b=r+4; if(p<=b) p=b+4;
+  if(Math.random()<0.7){ b=p+rand(4,11); }else{ p=b+rand(3,5); }
+  if(Math.abs(r-p)>5){
+    const delta=rand(0,5);
+    if(Math.random()<0.5) p=r+delta; else p=Math.max(1,r-delta);
+  }
+  return {package:p,inner:b,revival:r};
+}
+
+function buildRows(){
+  const pool=['地分线','卸车口','九宫'], names=[], rows=[];
+  names.push('AB环'); rows.push({type:'AB环',...makeRow('AB环',false, rows)});
+  const secondIsNine = Math.random() < 0.7;
+  const secondType   = secondIsNine ? '九宫' : pool.filter(t=>t!=='九宫')[rand(0,1)];
+  names.push(secondType); rows.push({type:secondType,...makeRow(secondType, secondType==='九宫' && secondIsNine, rows)});
+  if(!names.includes('九宫')){ names.push('九宫'); rows.push({type:'九宫',...makeRow('九宫',true, rows)}); }
+  ['地分线','卸车口'].forEach(t=>{ if(!names.includes(t)){ names.push(t); rows.push({type:t,...makeRow(t,false, rows)}); } });
+  while(rows.length<rand(4,6)){
+    let t=pick(pool);
+    if(names.length>=2 && names[names.length-1]===t && names[names.length-2]===t){ t=pool.find(x=>x!==t); }
+    names.push(t); rows.push({type:t,...makeRow(t,false, rows)});
+  }
+  if(names.length>=2 && names[names.length-1]==='AB环' && names[names.length-2]==='AB环'){
+    names.push('地分线'); rows.push({type:'地分线',...makeRow('地分线',false, rows)});
+  }
+  names.push('AB环'); rows.push({type:'AB环',...makeRow('AB环',false, rows)});
+  while(rows.length<rand(11,14)){
+    let t=pick(pool);
+    if(names.length>=2 && names[names.length-1]===t && names[names.length-2]===t){ t=pool.find(x=>x!==t); }
+    names.push(t); rows.push({type:t,...makeRow(t,false, rows)});
+  }
+  const abCountNow = names.filter(n => n==='AB环').length;
+  if(abCountNow < 3){
+    for(let i=0; i < 3 - abCountNow; i++){
+      names.splice(-1, 0, 'AB环'); rows.splice(-1, 0, {type:'AB环', ...makeRow('AB环', false, rows)});
+    }
+  } else if(abCountNow > 5){
+    let del = abCountNow - 5;
+    for(let i = names.length - 2; i > 0 && del > 0; i--){ if(names[i]==='AB环'){ names.splice(i, 1); rows.splice(i, 1); del--; } }
+  }
+  (function balanceAB(){
+    const abRows = rows.filter(r => r.type === 'AB环'); if(abRows.length === 0) return;
+    const totalRev = rows.reduce((s, r) => s + r.revival, 0);
+    const targetAB = Math.round(totalRev * 0.5);
+    let currAB = abRows.reduce((s, r) => s + r.revival, 0);
+    if(currAB === targetAB) return;
+    const ratio = targetAB / currAB;
+    abRows.forEach(r => { r.revival = Math.round(r.revival * ratio); });
+    const newAB = abRows.reduce((s, r) => s + r.revival, 0);
+    let diff = targetAB - newAB;
+    while(diff !== 0){
+      const r = abRows[Math.floor(Math.random() * abRows.length)];
+      if(diff > 0){ r.revival++; diff--; } else if(r.revival > 0){ r.revival--; diff++; }
+    }
+  })();
+  (function fixFirstAB() {
+    const first = rows[0]; if (!first || first.type !== 'AB环') return;
+    const { revival: r } = first; let { package: p } = first;
+    if (Math.abs(r - p) > 6) {
+      const delta = rand(0, 6);
+      if (Math.random() < 0.5) p = r + delta; else p = Math.max(1, r - delta);
+      first.package = p;
+    }
+  })();
+  (function ensureABcount(){
+    const abNow = rows.filter(r => r.type === 'AB环').length;
+    const need  = rand(4,6) - abNow;
+    for(let i=0; i<need; i++){ names.push('AB环'); rows.push({type:'AB环', ...makeRow('AB环',false, rows)}); }
+  })();
+  return rows;
+}
+
+let lock=false;
+function updateSum(){
+  if(lock)return; lock=true;
+  let s=0;
+  document.querySelectorAll('#tb tr').forEach(tr=> s+=parseInt(tr.cells[3].textContent)||0);
+  document.getElementById('tr').textContent=s;
+  lock=false;
+}
+
+/* ========== 方案 B 全新 reverseAll：按预算重分配复活数 ========== */
+function reverseAll(targetRev){
+  if(lock)return; lock=true;
+  const rows=[...document.querySelectorAll('#tb tr')];
+  const data=rows.map(tr=>({
+    tr,
+    type:tr.cells[0].textContent,
+    p:parseInt(tr.cells[1].textContent)||0,
+    b:parseInt(tr.cells[2].textContent)||0,
+    r:parseInt(tr.cells[3].textContent)||0
+  }));
+  const zeroTr=data.find(o=>o.type==='九宫'&&o.r===0)?.tr||null;
+
+  /* 1. 预算拆分 */
+  const abRows=data.filter(o=>o.type==='AB环');
+  const abTarget=Math.round(targetRev*0.5);
+  const otherTarget=targetRev-abTarget;
+
+  /* 2. AB 环分配 */
+  let abLeft=abTarget;
+  abRows.forEach((o,idx)=>{
+    if(o.tr===zeroTr)return;
+    let base=Math.floor(abTarget/Math.max(1,abRows.length));
+    if(idx===abRows.length-1)base=abLeft;
+    o.r=Math.max(0,base); abLeft-=o.r;
+  });
+
+  /* 3. 非 AB 环分配 */
+  const otherRows=data.filter(o=>o.type!=='AB环');
+  let otherLeft=otherTarget;
+  otherRows.forEach((o,idx)=>{
+    if(o.tr===zeroTr){o.r=0;return;}
+    let base=Math.floor(otherTarget/Math.max(1,otherRows.length));
+    if(idx===otherRows.length-1)base=otherLeft;
+    o.r=Math.max(0,base); otherLeft-=o.r;
+  });
+
+  /* 4. 写回 */
+  data.forEach(o=>o.tr.cells[3].textContent=o.r);
+  updateSum();
+  lock=false;
+}
+
+let inited=false;
+function initEvents(){
+  if(inited)return; inited=true;
+  document.getElementById('tb').addEventListener('input',e=>{
+    const td=e.target; if(td.tagName!=='TD')return;
+    const v=parseInt(td.textContent)||0; if(v<0)td.textContent=0;
+    updateSum();
+  });
+  document.getElementById('tr').addEventListener('blur',e=>{
+    const v=parseInt(e.target.textContent)||0; if(v<0){e.target.textContent=0;return;}
+    reverseAll(v);
+  });
+}
+
+function render(){
+  const rows=buildRows();
+  const tb=document.getElementById('tb');
+  tb.innerHTML='';
+  rows.forEach(o=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${o.type}</td><td contenteditable="true">${o.package}</td><td contenteditable="true">${o.inner}</td><td contenteditable="true">${o.revival}</td>`;
+    tb.appendChild(tr);
+  });
+  updateSum();
+}
+
+function setTitle(){
+  const d=new Date();
+  document.getElementById('title').textContent=`${d.getMonth()+1}-${d.getDate()}复活件`;
+}
+setTitle();
+initEvents();
+render();
+})();
+</script>
+</body>
+</html>
