@@ -24,8 +24,8 @@ th{background:#f5f5f5;font-size:12px;}
 <tbody id="tb"></tbody>
 <tfoot><tr class="total-row">
 <td>合计</td>
-<td contenteditable="true" id="tp"></td>
-<td contenteditable="true" id="ti"></td>
+<td contenteditable="true" id="tp">0</td>
+<td contenteditable="true" id="ti">0</td>
 <td contenteditable="true" id="tr">0</td>
 </tr></tfoot>
 </table>
@@ -135,13 +135,17 @@ function buildRows(){
 let lock=false;
 function updateSum(){
   if(lock)return; lock=true;
-  let s=0;
-  document.querySelectorAll('#tb tr').forEach(tr=> s+=parseInt(tr.cells[3].textContent)||0);
-  document.getElementById('tr').textContent=s;
+  let s=[0,0,0];
+  document.querySelectorAll('#tb tr').forEach(tr=>{
+    s[0]+=parseInt(tr.cells[1].textContent)||0;
+    s[1]+=parseInt(tr.cells[2].textContent)||0;
+    s[2]+=parseInt(tr.cells[3].textContent)||0;
+  });
+  ['tp','ti','tr'].forEach((id,i)=>{ document.getElementById(id).textContent=s[i]; });
   lock=false;
 }
 
-/* ========== 方案 B 全新 reverseAll：按预算重分配复活数 ========== */
+/* ========== 复活数反推（保持零九宫） ========== */
 function reverseAll(targetRev){
   if(lock)return; lock=true;
   const rows=[...document.querySelectorAll('#tb tr')];
@@ -154,12 +158,10 @@ function reverseAll(targetRev){
   }));
   const zeroTr=data.find(o=>o.type==='九宫'&&o.r===0)?.tr||null;
 
-  /* 1. 预算拆分 */
   const abRows=data.filter(o=>o.type==='AB环');
   const abTarget=Math.round(targetRev*0.5);
   const otherTarget=targetRev-abTarget;
 
-  /* 2. AB 环分配 */
   let abLeft=abTarget;
   abRows.forEach((o,idx)=>{
     if(o.tr===zeroTr)return;
@@ -168,7 +170,6 @@ function reverseAll(targetRev){
     o.r=Math.max(0,base); abLeft-=o.r;
   });
 
-  /* 3. 非 AB 环分配 */
   const otherRows=data.filter(o=>o.type!=='AB环');
   let otherLeft=otherTarget;
   otherRows.forEach((o,idx)=>{
@@ -178,8 +179,98 @@ function reverseAll(targetRev){
     o.r=Math.max(0,base); otherLeft-=o.r;
   });
 
-  /* 4. 写回 */
   data.forEach(o=>o.tr.cells[3].textContent=o.r);
+  updateSum();
+  lock=false;
+}
+
+/* ========== 包装数反推：随机权重，AB环+九宫60% ========== */
+function reversePackage(targetP){
+  if(lock)return; lock=true;
+  const rows=[...document.querySelectorAll('#tb tr')];
+  const data=rows.map(tr=>({
+    tr,
+    type:tr.cells[0].textContent,
+    p:parseInt(tr.cells[1].textContent)||0,
+    b:parseInt(tr.cells[2].textContent)||0,
+    r:parseInt(tr.cells[3].textContent)||0
+  }));
+
+  const abRows=data.filter(o=>o.type==='AB环');
+  const jiuRows=data.filter(o=>o.type==='九宫');
+  const abJiuRows=[...abRows,...jiuRows];
+  const otherRows=data.filter(o=>o.type!=='AB环'&&o.type!=='九宫');
+
+  const abJiuTarget=Math.round(targetP*0.6);
+  const otherTarget=targetP-abJiuTarget;
+
+  /* 随机权重分配 abJiuTarget */
+  const w1=abJiuRows.map(()=>rand(1,10));
+  const totalW1=w1.reduce((a,b)=>a+b,0);
+  let left1=abJiuTarget;
+  abJiuRows.forEach((o,i)=>{
+    let base=Math.floor(abJiuTarget*w1[i]/totalW1);
+    if(i===abJiuRows.length-1)base=left1;
+    o.p=Math.max(0,base); left1-=o.p;
+  });
+
+  /* 随机权重分配 otherTarget */
+  const w2=otherRows.map(()=>rand(1,10));
+  const totalW2=w2.reduce((a,b)=>a+b,0);
+  let left2=otherTarget;
+  otherRows.forEach((o,i)=>{
+    let base=Math.floor(otherTarget*w2[i]/totalW2);
+    if(i===otherRows.length-1)base=left2;
+    o.p=Math.max(0,base); left2-=o.p;
+  });
+
+  data.forEach(o=>o.tr.cells[1].textContent=o.p);
+  updateSum();
+  lock=false;
+}
+
+/* ========== 内件数反推：随机权重，卸车口+地分线+九宫60% ========== */
+function reverseInner(targetB){
+  if(lock)return; lock=true;
+  const rows=[...document.querySelectorAll('#tb tr')];
+  const data=rows.map(tr=>({
+    tr,
+    type:tr.cells[0].textContent,
+    p:parseInt(tr.cells[1].textContent)||0,
+    b:parseInt(tr.cells[2].textContent)||0,
+    r:parseInt(tr.cells[3].textContent)||0
+  }));
+
+  const xieRows=data.filter(o=>o.type==='卸车口');
+  const diRows=data.filter(o=>o.type==='地分线');
+  const jiuRows=data.filter(o=>o.type==='九宫');
+  const xdjRows=[...xieRows,...diRows,...jiuRows];
+  const otherRows=data.filter(o=>!['卸车口','地分线','九宫'].includes(o.type));
+
+  const xdjTarget=Math.round(targetB*0.6);
+  const otherTarget=targetB-xdjTarget;
+
+  /* 随机权重分配 xdjTarget */
+  const w1=xdjRows.map(()=>rand(1,10));
+  const totalW1=w1.reduce((a,b)=>a+b,0);
+  let left1=xdjTarget;
+  xdjRows.forEach((o,i)=>{
+    let base=Math.floor(xdjTarget*w1[i]/totalW1);
+    if(i===xdjRows.length-1)base=left1;
+    o.b=Math.max(0,base); left1-=o.b;
+  });
+
+  /* 随机权重分配 otherTarget */
+  const w2=otherRows.map(()=>rand(1,10));
+  const totalW2=w2.reduce((a,b)=>a+b,0);
+  let left2=otherTarget;
+  otherRows.forEach((o,i)=>{
+    let base=Math.floor(otherTarget*w2[i]/totalW2);
+    if(i===otherRows.length-1)base=left2;
+    o.b=Math.max(0,base); left2-=o.b;
+  });
+
+  data.forEach(o=>o.tr.cells[2].textContent=o.b);
   updateSum();
   lock=false;
 }
@@ -192,9 +283,20 @@ function initEvents(){
     const v=parseInt(td.textContent)||0; if(v<0)td.textContent=0;
     updateSum();
   });
+  /* 复活数合计 */
   document.getElementById('tr').addEventListener('blur',e=>{
     const v=parseInt(e.target.textContent)||0; if(v<0){e.target.textContent=0;return;}
     reverseAll(v);
+  });
+  /* 包装数合计 */
+  document.getElementById('tp').addEventListener('blur',e=>{
+    const v=parseInt(e.target.textContent)||0; if(v<0){e.target.textContent=0;return;}
+    reversePackage(v);
+  });
+  /* 内件数合计 */
+  document.getElementById('ti').addEventListener('blur',e=>{
+    const v=parseInt(e.target.textContent)||0; if(v<0){e.target.textContent=0;return;}
+    reverseInner(v);
   });
 }
 
@@ -204,7 +306,7 @@ function render(){
   tb.innerHTML='';
   rows.forEach(o=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${o.type}</td><td contenteditable="true">${o.package}</td><td contenteditable="true">${o.inner}</td><td contenteditable="true">${o.revival}</td>`;
+    tr.innerHTML=`<td contenteditable="true">${o.type}</td><td contenteditable="true">${o.package}</td><td contenteditable="true">${o.inner}</td><td contenteditable="true">${o.revival}</td>`;
     tb.appendChild(tr);
   });
   updateSum();
