@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+
 <script>
 (function () {
   const PASSWORD = '11';        // 想改的密码
@@ -12,7 +13,7 @@
     return m ? decodeURIComponent(m[1]) : null;
   }
 
-  /* ---------- 写 4 小时后失效的 Cookie ---------- */
+  /* ---------- 写 4 小时后失效的 Cookie ----------- */
   function setFourHourCookie(name, value) {
     const fourHourLater = new Date();
     fourHourLater.setTime(fourHourLater.getTime() + 4 * 60 * 60 * 1000); // 4 小时
